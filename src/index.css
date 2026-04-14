@@ -1,0 +1,137 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * { box-sizing: border-box; }
+  
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    background-color: #0a0a0f;
+    color: #f0f0f8;
+    font-family: 'DM Sans', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden;
+  }
+
+  ::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: #ffffff18;
+    border-radius: 4px;
+  }
+  ::-webkit-scrollbar-thumb:hover { background: #ffffff30; }
+
+  ::selection {
+    background: #7c6aff40;
+    color: #f0f0f8;
+  }
+}
+
+@layer components {
+  .kizen-surface {
+    background: #0f0f17;
+    border: 1px solid #ffffff0d;
+  }
+
+  .kizen-surface-2 {
+    background: #14141f;
+    border: 1px solid #ffffff18;
+  }
+
+  .kizen-btn {
+    @apply inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all duration-200;
+  }
+
+  .kizen-btn-primary {
+    @apply kizen-btn bg-accent text-white hover:bg-accent-hover;
+    box-shadow: 0 0 20px #7c6aff30;
+  }
+
+  .kizen-btn-ghost {
+    @apply kizen-btn text-text-secondary hover:text-text-primary hover:bg-white/5;
+  }
+
+  .kizen-input {
+    @apply w-full px-3 py-2 rounded-lg bg-white/5 border border-border-subtle text-text-primary placeholder-text-secondary text-sm outline-none transition-all duration-200;
+    @apply focus:border-accent focus:bg-white/8;
+  }
+
+  .prose-kizen {
+    @apply text-text-secondary leading-relaxed;
+  }
+
+  .prose-kizen h1, .prose-kizen h2, .prose-kizen h3 {
+    @apply text-text-primary font-display font-semibold mt-4 mb-2;
+  }
+
+  .prose-kizen p { @apply mb-3; }
+  .prose-kizen ul { @apply list-disc pl-5 mb-3 space-y-1; }
+  .prose-kizen ol { @apply list-decimal pl-5 mb-3 space-y-1; }
+  .prose-kizen li { @apply text-text-secondary; }
+
+  .prose-kizen code {
+    @apply font-mono text-accent bg-accent-dim px-1.5 py-0.5 rounded text-sm;
+  }
+
+  .prose-kizen pre {
+    @apply bg-surface-2 border border-border-subtle rounded-xl p-4 overflow-x-auto mb-4;
+  }
+
+  .prose-kizen pre code {
+    @apply bg-transparent p-0 text-text-primary;
+  }
+
+  .prose-kizen a {
+    @apply text-accent underline underline-offset-2 hover:text-accent-hover;
+  }
+
+  .prose-kizen blockquote {
+    @apply border-l-2 border-accent pl-4 text-text-secondary italic;
+  }
+
+  .prose-kizen table {
+    @apply w-full border-collapse mb-4 text-sm;
+  }
+
+  .prose-kizen th {
+    @apply text-left px-3 py-2 bg-white/5 border border-border-subtle text-text-primary font-medium;
+  }
+
+  .prose-kizen td {
+    @apply px-3 py-2 border border-border-subtle text-text-secondary;
+  }
+}
+
+/* Animated gradient for landing */
+@keyframes gradientShift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+.animate-gradient {
+  background-size: 200% 200%;
+  animation: gradientShift 8s ease infinite;
+}
+
+/* Typing dots */
+@keyframes typingDot {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+  30% { transform: translateY(-4px); opacity: 1; }
+}
+
+.typing-dot:nth-child(1) { animation: typingDot 1.2s infinite 0s; }
+.typing-dot:nth-child(2) { animation: typingDot 1.2s infinite 0.2s; }
+.typing-dot:nth-child(3) { animation: typingDot 1.2s infinite 0.4s; }
+
+/* Code highlight overrides */
+.hljs {
+  background: transparent !important;
+  padding: 0 !important;
+}
