@@ -60,7 +60,7 @@
 
   .kizen-input {
     @apply w-full px-3 py-2 rounded-lg bg-white/5 border border-border-subtle text-text-primary placeholder-text-secondary text-sm outline-none transition-all duration-200;
-    @apply focus:border-accent focus:bg-white/8;
+    @apply focus:border-accent focus:bg-white/10;
   }
 
   .prose-kizen {
