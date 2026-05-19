@@ -4,7 +4,7 @@ import { v4 as uuid } from 'uuid'
 import {
   getConversation, saveConversation, addMessageToConversation,
   getSettings, getApiKeys, getMemory, getMemoryContext,
-  trackTokens, extractMemoryFromConversation, addMemoryFact, updateMemorySummary
+  trackTokens, addMemoryFact, updateMemorySummary
 } from '../core/StorageManager.js'
 import {
   PROVIDERS, SPENDING_LIMITS, detectIntent, selectModel,
