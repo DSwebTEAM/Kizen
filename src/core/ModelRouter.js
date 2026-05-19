@@ -13,8 +13,10 @@ export const PROVIDERS = {
       economy: 'llama-3.1-8b-instant',
       balanced: 'llama-3.3-70b-versatile',
       max: 'llama-3.3-70b-versatile',
+      overdrive: 'llama-3.3-70b-versatile',
     },
-    supportsVision: false,
+    visionModel: 'llama-3.2-11b-vision-preview',
+    supportsVision: true,
     supportsStreaming: true,
   },
   openrouter: {
@@ -24,6 +26,7 @@ export const PROVIDERS = {
       economy: 'mistralai/mistral-7b-instruct',
       balanced: 'mistralai/mixtral-8x7b-instruct',
       max: 'anthropic/claude-3.5-sonnet',
+      overdrive: 'anthropic/claude-3.5-sonnet',
     },
     supportsVision: true,
     supportsStreaming: true,
@@ -39,6 +42,7 @@ export const PROVIDERS = {
       economy: 'meta-llama/Llama-3.2-3B-Instruct-Turbo',
       balanced: 'meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo',
       max: 'meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo',
+      overdrive: 'meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo',
     },
     supportsVision: false,
     supportsStreaming: true,
@@ -50,6 +54,7 @@ export const PROVIDERS = {
       economy: 'accounts/fireworks/models/llama-v3p1-8b-instruct',
       balanced: 'accounts/fireworks/models/llama-v3p1-70b-instruct',
       max: 'accounts/fireworks/models/llama-v3p1-405b-instruct',
+      overdrive: 'accounts/fireworks/models/llama-v3p1-405b-instruct',
     },
     supportsVision: false,
     supportsStreaming: true,
@@ -61,6 +66,7 @@ export const PROVIDERS = {
       economy: 'claude-haiku-4-5-20251001',
       balanced: 'claude-sonnet-4-6',
       max: 'claude-opus-4-6',
+      overdrive: 'claude-opus-4-6',
     },
     supportsVision: true,
     supportsStreaming: true,
@@ -73,6 +79,7 @@ export const PROVIDERS = {
       economy: 'gpt-4o-mini',
       balanced: 'gpt-4o',
       max: 'gpt-4o',
+      overdrive: 'gpt-4o',
     },
     supportsVision: true,
     supportsStreaming: true,
@@ -84,6 +91,7 @@ export const SPENDING_LIMITS = {
   economy: { max_tokens: 512, context_messages: 5 },
   balanced: { max_tokens: 2048, context_messages: 15 },
   max: { max_tokens: 8192, context_messages: 50 },
+  overdrive: { max_tokens: 16384, context_messages: 100 },
 }
 
 // ─── Intent Detection ─────────────────────────────────────────
@@ -125,21 +133,19 @@ export const selectModel = (provider, spendingMode, intent = 'chat') => {
   const providerConfig = PROVIDERS[provider]
   if (!providerConfig) return null
 
+  // Overdrive always uses max model
+  const effectiveMode = spendingMode === 'overdrive' ? 'overdrive' : spendingMode
+
   // Check for user-defined override for this intent
   const override = settings.model_overrides?.[intent]
   if (override) return override
 
-  // For vision intent, check if provider supports it
-  if (intent === 'vision' && !providerConfig.supportsVision) {
-    // Find a vision-capable provider
-    const keys = getApiKeys()
-    const visionProviders = ['anthropic', 'openai', 'openrouter']
-    for (const vp of visionProviders) {
-      if (keys[vp]) return { provider: vp, model: PROVIDERS[vp].models[spendingMode] }
-    }
+  // For vision, use the provider's dedicated vision model if available
+  if (intent === 'vision' && providerConfig.visionModel) {
+    return providerConfig.visionModel
   }
 
-  return providerConfig.models[spendingMode] || providerConfig.models.balanced
+  return providerConfig.models[effectiveMode] || providerConfig.models.balanced
 }
 
 // ─── Context Chunker ──────────────────────────────────────────
@@ -278,6 +284,11 @@ const callAnthropic = async (apiKey, model, messages, options, onChunk) => {
   const systemMsg = messages.find(m => m.role === 'system')
   const chatMessages = messages.filter(m => m.role !== 'system')
 
+  // Check if any message has image content (needs vision beta)
+  const hasImages = chatMessages.some(m =>
+    Array.isArray(m.content) && m.content.some(b => b.type === 'image')
+  )
+
   const headers = {
     'Content-Type': 'application/json',
     'x-api-key': apiKey,
@@ -289,7 +300,8 @@ const callAnthropic = async (apiKey, model, messages, options, onChunk) => {
     messages: chatMessages,
     max_tokens: options.max_tokens || 2048,
     temperature: options.temperature ?? 0.7,
-    stream: options.stream,
+    // Anthropic: don't send stream:false — just omit it when not streaming
+    ...(options.stream ? { stream: true } : {}),
     ...(systemMsg ? { system: systemMsg.content } : {}),
   }
 
@@ -409,4 +421,50 @@ ${conversationText}`
   } catch {
     return []
   }
+}
+// ─── Confidence Scoring ───────────────────────────────────────
+export const scoreConfidence = (responseText) => {
+  const hedges = (responseText.match(/\b(might|maybe|possibly|could|uncertain|unclear|I think|I believe|approximately|roughly|seems|appears)\b/gi) || []).length
+  const definites = (responseText.match(/\b(definitely|certainly|always|never|exactly|precisely|clearly|obviously)\b/gi) || []).length
+  const ratio = definites / Math.max(hedges + definites, 1)
+  const base = Math.min(0.98, Math.max(0.3, ratio * 0.6 + 0.4))
+  const len = responseText.split(' ').length
+  const lengthBonus = Math.min(0.08, len / 3000)
+  return Math.round((base + lengthBonus) * 100)
+}
+
+// ─── Self-Critique Loop ───────────────────────────────────────
+export const selfCritique = async (originalResponse, provider, model, settings) => {
+  const critiquePrompt = 'Review this AI response and identify 1-3 key weaknesses or improvements. Be concise. Respond ONLY with JSON: {"issues": [".."], "improved_points": [".."]}\n\nResponse: ' + originalResponse.slice(0, 1500)
+  try {
+    const result = await callProvider(provider, model, [{ role: 'user', content: critiquePrompt }], { ...settings, stream_enabled: false, max_tokens: 400 })
+    const clean = result.replace(/```json|```/g, '').trim()
+    return JSON.parse(clean)
+  } catch { return null }
+}
+
+// ─── Deep Reasoning System Prompt ────────────────────────────
+export const buildReasoningSystemPrompt = (basePrompt) => {
+  const protocol = [
+    '',
+    'INTELLIGENCE PROTOCOL ACTIVE:',
+    '1. ANALYSE: Decompose the request — explicit vs implied.',
+    '2. CONSIDER: Think through 2-3 approaches before committing.',
+    '3. REASON: Show chain-of-thought where helpful.',
+    '4. CRITIQUE: Check completeness. Flag edge cases.',
+    '5. CONFIDENCE: After your response, add a confidence rating (0-100%) with a one-line reason.',
+    'For code: consider security, performance, edge cases.',
+    'For analysis: consider opposing viewpoints.',
+  ].join('\n')
+  return basePrompt + protocol
+}
+
+// ─── Clarification Questions ──────────────────────────────────
+export const generateClarifications = async (userMessage, provider, model, settings) => {
+  const prompt = 'A user sent this message: "' + userMessage.slice(0, 400) + '"\nGenerate 3 clarifying questions that would help give a better answer. Be specific. Return ONLY a JSON array of short strings (max 15 words each).'
+  try {
+    const result = await callProvider(provider, model, [{ role: 'user', content: prompt }], { ...settings, stream_enabled: false, max_tokens: 256 })
+    const clean = result.replace(/```json|```/g, '').trim()
+    return JSON.parse(clean)
+  } catch { return [] }
 }

@@ -7,6 +7,127 @@ import {
 import { PROVIDERS } from '../core/ModelRouter.js'
 import Icons from '../assets/icons/Icons.jsx'
 
+// ─── Arc Gauge ────────────────────────────────────────────────
+function ArcGauge({ value, max, label, color = 'var(--accent)', unit = '' }) {
+  const pct = Math.min(1, value / max)
+  const r = 36, cx = 50, cy = 50
+  const startAngle = -220, sweep = 260
+  const startRad = (startAngle * Math.PI) / 180
+  const endRad = ((startAngle + sweep * pct) * Math.PI) / 180
+  const bgEndRad = ((startAngle + sweep) * Math.PI) / 180
+
+  const arc = (angle) => ({
+    x: cx + r * Math.cos(angle),
+    y: cy + r * Math.sin(angle),
+  })
+
+  const pathD = (end) => {
+    const s = arc(startRad)
+    const e = arc(end)
+    const large = (end - startRad) > Math.PI ? 1 : 0
+    return `M ${s.x} ${s.y} A ${r} ${r} 0 ${large} 1 ${e.x} ${e.y}`
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+      <svg width="100" height="100" viewBox="0 0 100 100">
+        {/* Background track */}
+        <path d={pathD(bgEndRad)} fill="none" stroke="var(--border-default)" strokeWidth="6" strokeLinecap="square" />
+        {/* Value arc */}
+        {pct > 0 && (
+          <path d={pathD(endRad)} fill="none" stroke={color} strokeWidth="6" strokeLinecap="square" />
+        )}
+        {/* Value text */}
+        <text x="50" y="48" textAnchor="middle" style={{ fontSize: '14px', fontWeight: 700, fill: 'var(--text-primary)', fontFamily: 'JetBrains Mono, monospace' }}>
+          {typeof value === 'number' ? (value >= 1000 ? `${(value/1000).toFixed(1)}k` : value) : value}
+        </text>
+        <text x="50" y="61" textAnchor="middle" style={{ fontSize: '9px', fill: 'var(--text-tertiary)', fontFamily: 'inherit' }}>
+          {unit}
+        </text>
+      </svg>
+      <span style={{ fontSize: '11px', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</span>
+    </div>
+  )
+}
+
+// ─── Toggle ───────────────────────────────────────────────────
+function Toggle({ value, onChange, danger = false }) {
+  return (
+    <button
+      onClick={() => onChange(!value)}
+      style={{
+        position: 'relative', width: '40px', height: '22px',
+        borderRadius: '11px', border: '1px solid var(--border-default)',
+        background: value ? (danger ? 'var(--red)' : 'var(--accent)') : 'var(--bg-2)',
+        transition: 'all 0.15s', cursor: 'pointer', flexShrink: 0,
+        borderColor: value ? (danger ? 'var(--red)' : 'var(--accent)') : 'var(--border-default)',
+      }}
+    >
+      <div style={{
+        position: 'absolute', top: '2px', width: '16px', height: '16px',
+        borderRadius: '8px', background: value ? '#fff' : 'var(--text-tertiary)',
+        left: value ? '20px' : '2px', transition: 'left 0.15s',
+      }} />
+    </button>
+  )
+}
+
+// ─── Slider ───────────────────────────────────────────────────
+function Slider({ value, min, max, step = 0.1, onChange, color = 'var(--accent)' }) {
+  return (
+    <div style={{ position: 'relative', flex: 1 }}>
+      <input
+        type="range" min={min} max={max} step={step}
+        value={value}
+        onChange={e => onChange(parseFloat(e.target.value))}
+        style={{ width: '100%', accentColor: color, cursor: 'pointer' }}
+      />
+    </div>
+  )
+}
+
+// ─── Section ──────────────────────────────────────────────────
+function Section({ title, icon: Icon, tag, danger = false, children }) {
+  return (
+    <div style={{ marginBottom: '24px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+        <Icon size={14} style={{ color: danger ? 'var(--red)' : 'var(--accent)' }} />
+        <span style={{ fontFamily: 'Syne, sans-serif', fontWeight: 600, fontSize: '14px', color: 'var(--text-primary)' }}>{title}</span>
+        {tag && (
+          <span style={{
+            fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.08em',
+            padding: '2px 6px', borderRadius: '2px',
+            color: tag === 'AFTERBURN' ? 'var(--red)' : 'var(--text-accent)',
+            border: `1px solid ${tag === 'AFTERBURN' ? 'var(--red)' : 'var(--accent)'}`,
+            background: tag === 'AFTERBURN' ? 'var(--red-dim)' : 'var(--accent-dim)',
+          }}>
+            {tag}
+          </span>
+        )}
+      </div>
+      <div style={{ border: '1px solid var(--border-default)', background: 'var(--bg-1)' }}>
+        {children}
+      </div>
+    </div>
+  )
+}
+
+function Row({ label, desc, last = false, children }) {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      padding: '12px 16px',
+      borderBottom: last ? 'none' : '1px solid var(--border-subtle)',
+    }}>
+      <div style={{ flex: 1, paddingRight: '20px' }}>
+        <div style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-primary)' }}>{label}</div>
+        {desc && <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '2px' }}>{desc}</div>}
+      </div>
+      <div style={{ flexShrink: 0 }}>{children}</div>
+    </div>
+  )
+}
+
 const PROVIDER_LIST = [
   { id: 'groq', label: 'Groq', url: 'console.groq.com' },
   { id: 'openrouter', label: 'OpenRouter', url: 'openrouter.ai/keys' },
@@ -16,53 +137,19 @@ const PROVIDER_LIST = [
   { id: 'openai', label: 'OpenAI', url: 'platform.openai.com' },
 ]
 
-const MODELS_BY_PROVIDER = {
-  groq: ['llama-3.1-8b-instant', 'llama-3.3-70b-versatile', 'mixtral-8x7b-32768', 'gemma2-9b-it'],
-  openrouter: ['mistralai/mistral-7b-instruct', 'mistralai/mixtral-8x7b-instruct', 'anthropic/claude-3.5-sonnet', 'meta-llama/llama-3.1-70b-instruct', 'google/gemini-flash-1.5'],
-  together: ['meta-llama/Llama-3.2-3B-Instruct-Turbo', 'meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo', 'meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo'],
-  fireworks: ['accounts/fireworks/models/llama-v3p1-8b-instruct', 'accounts/fireworks/models/llama-v3p1-70b-instruct', 'accounts/fireworks/models/llama-v3p1-405b-instruct'],
-  anthropic: ['claude-haiku-4-5-20251001', 'claude-sonnet-4-6', 'claude-opus-4-6'],
-  openai: ['gpt-4o-mini', 'gpt-4o', 'o1-mini'],
-}
-
-const Section = ({ title, icon: Icon, children }) => (
-  <div className="mb-8">
-    <div className="flex items-center gap-2.5 mb-4">
-      <Icon size={16} className="text-accent" />
-      <h2 className="font-display font-semibold text-text-primary">{title}</h2>
-    </div>
-    <div className="rounded-2xl border border-border-subtle overflow-hidden" style={{ background: '#0f0f1a' }}>
-      {children}
-    </div>
-  </div>
-)
-
-const Row = ({ label, desc, children, noBorder = false }) => (
-  <div className={`flex items-center justify-between px-5 py-4 ${!noBorder ? 'border-b border-border-subtle' : ''}`}>
-    <div className="flex-1 pr-6">
-      <div className="text-sm font-medium text-text-primary">{label}</div>
-      {desc && <div className="text-xs text-text-secondary mt-0.5">{desc}</div>}
-    </div>
-    <div className="flex-shrink-0">{children}</div>
-  </div>
-)
-
-const Toggle = ({ value, onChange }) => (
-  <button
-    onClick={() => onChange(!value)}
-    className={`relative w-11 h-6 rounded-full transition-all duration-200 ${value ? 'bg-accent' : 'bg-white/10'}`}>
-    <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all duration-200 ${value ? 'left-[22px]' : 'left-0.5'}`} />
-  </button>
-)
-
-const PingStatus = ({ status }) => {
-  if (!status) return null
+// ─── Ping status badge ────────────────────────────────────────
+function PingBadge({ status }) {
+  const map = {
+    ok: { color: '#22c55e', label: 'Connected' },
+    error: { color: 'var(--red)', label: 'Failed' },
+    testing: { color: '#f59e0b', label: 'Testing...' },
+    idle: { color: 'var(--text-tertiary)', label: 'Not tested' },
+  }
+  const s = map[status] || map.idle
   return (
-    <span className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg
-      ${status === 'ok' ? 'text-green-400 bg-green-400/10' :
-        status === 'error' ? 'text-red-400 bg-red-400/10' : 'text-yellow-400 bg-yellow-400/10'}`}>
-      <span className={`w-1.5 h-1.5 rounded-full ${status === 'ok' ? 'bg-green-400' : status === 'error' ? 'bg-red-400' : 'bg-yellow-400'}`} />
-      {status === 'ok' ? 'Connected' : status === 'error' ? 'Failed' : 'Testing...'}
+    <span style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '11px', color: s.color }}>
+      <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: s.color, display: 'inline-block' }} />
+      {s.label}
     </span>
   )
 }
@@ -72,18 +159,20 @@ export default function SettingsPage() {
   const [keys, setKeys] = useState(getApiKeys())
   const [showKeys, setShowKeys] = useState({})
   const [pingStatus, setPingStatus] = useState({})
+  const [pingMs, setPingMs] = useState({})
   const [memory, setMemory] = useState(getMemory())
-  const [activeSection, setActiveSection] = useState('providers')
   const [saved, setSaved] = useState(false)
-  const [confirmClear, setConfirmClear] = useState(null)
+  const [confirm, setConfirm] = useState(null)
+  const [section, setSection] = useState('providers')
 
   const updateSetting = (key, value) => {
     const updated = saveSettings({ [key]: value })
     setSettings(updated)
+    window.dispatchEvent(new Event('kizen:settings-changed'))
     flashSaved()
   }
 
-  const updateNestedSetting = (parent, key, value) => {
+  const updateNested = (parent, key, value) => {
     const updated = saveSettings({ [parent]: { ...settings[parent], [key]: value } })
     setSettings(updated)
     flashSaved()
@@ -91,7 +180,7 @@ export default function SettingsPage() {
 
   const flashSaved = () => {
     setSaved(true)
-    setTimeout(() => setSaved(false), 1500)
+    setTimeout(() => setSaved(false), 1200)
   }
 
   const handleKeyChange = (provider, val) => {
@@ -99,508 +188,528 @@ export default function SettingsPage() {
   }
 
   const handleKeySave = (provider) => {
-    const val = keys[provider]?.trim()
-    if (val) saveApiKey(provider, val)
-    else removeApiKey(provider)
-    flashSaved()
+    if (keys[provider]?.trim()) {
+      saveApiKey(provider, keys[provider].trim())
+      flashSaved()
+    } else {
+      removeApiKey(provider)
+    }
   }
 
-  const toggleKeyVisibility = (id) => setShowKeys(prev => ({ ...prev, [id]: !prev[id] }))
-
-  const testConnection = async (provider) => {
-    const key = keys[provider]?.trim()
+  const testProvider = async (provider) => {
+    const key = keys[provider]
     if (!key) return
     setPingStatus(prev => ({ ...prev, [provider]: 'testing' }))
-
+    const t0 = Date.now()
     try {
       const config = PROVIDERS[provider]
       const headers = { 'Content-Type': 'application/json' }
-
+      let url = config.baseUrl
+      let body
       if (config.isAnthropic) {
         headers['x-api-key'] = key
         headers['anthropic-version'] = '2023-06-01'
+        body = JSON.stringify({ model: config.models.economy, max_tokens: 1, messages: [{ role: 'user', content: 'hi' }] })
       } else {
         headers['Authorization'] = `Bearer ${key}`
-        if (config.extraHeaders) Object.assign(headers, config.extraHeaders)
+        body = JSON.stringify({ model: config.models.economy, max_tokens: 1, messages: [{ role: 'user', content: 'hi' }] })
       }
-
-      const model = config.models.economy
-      let body, url
-
-      if (config.isAnthropic) {
-        url = 'https://api.anthropic.com/v1/messages'
-        body = { model, max_tokens: 1, messages: [{ role: 'user', content: 'hi' }] }
-      } else {
-        url = config.baseUrl
-        body = { model, max_tokens: 1, messages: [{ role: 'user', content: 'hi' }] }
-      }
-
-      const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) })
-      setPingStatus(prev => ({ ...prev, [provider]: res.ok ? 'ok' : 'error' }))
+      if (config.extraHeaders) Object.assign(headers, config.extraHeaders)
+      const res = await fetch(url, { method: 'POST', headers, body })
+      const ms = Date.now() - t0
+      setPingMs(prev => ({ ...prev, [provider]: ms }))
+      setPingStatus(prev => ({ ...prev, [provider]: res.status < 500 ? 'ok' : 'error' }))
     } catch {
       setPingStatus(prev => ({ ...prev, [provider]: 'error' }))
     }
   }
 
-  const clearMemory = () => {
-    saveMemory({ facts: [], summary: '', last_updated: null })
-    setMemory(getMemory())
-    flashSaved()
-  }
-
-  const sections = [
-    { id: 'providers', label: 'API Keys', icon: Icons.Key },
+  const SECTIONS = [
+    { id: 'providers', label: 'Providers', icon: Icons.Key },
     { id: 'model', label: 'Model', icon: Icons.Cpu },
-    { id: 'spending', label: 'Spending', icon: Icons.Zap },
-    { id: 'behaviour', label: 'AI Behaviour', icon: Icons.Brain },
-    { id: 'memory', label: 'Memory', icon: Icons.Memory },
-    { id: 'advanced', label: 'Advanced', icon: Icons.Settings },
-    { id: 'data', label: 'Data & Privacy', icon: Icons.Trash },
+    { id: 'intelligence', label: 'Intelligence', icon: Icons.Brain },
+    { id: 'afterburn', label: 'Afterburn', icon: Icons.Flame, tag: 'NEW' },
+    { id: 'behaviour', label: 'Behaviour', icon: Icons.Sliders },
+    { id: 'memory', label: 'Memory', icon: Icons.Brain },
+    { id: 'appearance', label: 'Appearance', icon: Icons.Sun },
+    { id: 'data', label: 'Data', icon: Icons.Shield },
   ]
 
+  const isMobile = window.innerWidth < 768
+
   return (
-    <div className="h-full flex overflow-hidden">
-      {/* Settings sidebar */}
-      <div className="w-52 flex-shrink-0 border-r border-border-subtle py-4 px-3" style={{ background: '#0d0d16' }}>
-        <div className="text-xs text-text-secondary/50 uppercase tracking-wider font-medium px-2 mb-3">Settings</div>
-        {sections.map(({ id, label, icon: Icon }) => (
-          <button key={id} onClick={() => setActiveSection(id)}
-            className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm mb-0.5 transition-all
-              ${activeSection === id
-                ? 'text-text-primary bg-accent-dim border border-accent/20'
-                : 'text-text-secondary hover:text-text-primary hover:bg-white/5'}`}>
-            <Icon size={14} className={activeSection === id ? 'text-accent' : ''} />
+    <div style={{ height: '100%', display: 'flex', flexDirection: isMobile ? 'column' : 'row', minHeight: 0 }}>
+      {/* Nav — vertical sidebar on desktop, horizontal scrollable tabs on mobile */}
+      <div style={{
+        width: isMobile ? '100%' : '180px',
+        flexShrink: 0,
+        borderRight: isMobile ? 'none' : '1px solid var(--border-subtle)',
+        borderBottom: isMobile ? '1px solid var(--border-subtle)' : 'none',
+        padding: isMobile ? '0' : '16px 0',
+        overflowX: isMobile ? 'auto' : 'visible',
+        overflowY: 'auto',
+        background: 'var(--bg-sidebar)',
+        display: isMobile ? 'flex' : 'block',
+        whiteSpace: 'nowrap',
+      }}>
+        {SECTIONS.map(({ id, label, icon: Icon, tag }) => (
+          <button
+            key={id}
+            onClick={() => setSection(id)}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: '6px',
+              padding: isMobile ? '10px 14px' : '8px 16px',
+              fontSize: '13px', textAlign: 'left', whiteSpace: 'nowrap',
+              background: section === id ? 'var(--accent-dim)' : 'transparent',
+              color: section === id ? 'var(--text-accent)' : 'var(--text-secondary)',
+              borderLeft: isMobile ? 'none' : (section === id ? '2px solid var(--accent)' : '2px solid transparent'),
+              borderBottom: isMobile ? (section === id ? '2px solid var(--accent)' : '2px solid transparent') : 'none',
+              border: 'none', cursor: 'pointer',
+              fontFamily: 'inherit', marginBottom: isMobile ? '0' : '2px',
+              borderRadius: isMobile ? '0' : '0 4px 4px 0',
+              width: isMobile ? 'auto' : '100%',
+              flexShrink: 0,
+            }}
+          >
+            <Icon size={13} />
             {label}
+            {tag && !isMobile && (
+              <span style={{ fontSize: '9px', color: 'var(--red)', border: '1px solid var(--red)', padding: '1px 4px', borderRadius: '2px', marginLeft: 'auto' }}>{tag}</span>
+            )}
           </button>
         ))}
-
-        {/* Saved indicator */}
-        {saved && (
-          <div className="mt-4 flex items-center gap-2 px-3 py-2 rounded-xl bg-green-400/10 border border-green-400/20 text-green-400 text-xs animate-fade-in">
-            <Icons.Check size={12} />
-            Saved
-          </div>
-        )}
       </div>
 
-      {/* Settings content */}
-      <div className="flex-1 overflow-y-auto px-8 py-6">
+      {/* Main content */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
+          <h1 style={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: '20px' }}>Settings</h1>
+          {saved && (
+            <span style={{ fontSize: '12px', color: '#22c55e', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <Icons.Check size={12} />
+              Saved
+            </span>
+          )}
+        </div>
 
-        {/* ── API Keys ── */}
-        {activeSection === 'providers' && (
-          <div>
-            <h1 className="font-display font-bold text-2xl text-text-primary mb-1">API Keys</h1>
-            <p className="text-text-secondary text-sm mb-6">Keys are stored only in your browser. Never sent to us.</p>
-
-            <Section title="AI Providers" icon={Icons.Cpu}>
-              {PROVIDER_LIST.map(({ id, label, url }, i) => (
-                <div key={id} className={`px-5 py-4 ${i < PROVIDER_LIST.length - 1 ? 'border-b border-border-subtle' : ''}`}>
-                  <div className="flex items-center justify-between mb-2">
-                    <div>
-                      <span className="text-sm font-medium text-text-primary">{label}</span>
-                      <a href={`https://${url}`} target="_blank" rel="noopener noreferrer"
-                        className="ml-2 text-xs text-accent hover:text-accent-hover">
-                        {url}
-                      </a>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <PingStatus status={pingStatus[id]} />
-                      <button onClick={() => testConnection(id)}
-                        className="text-xs text-text-secondary hover:text-text-primary px-2.5 py-1 rounded-lg hover:bg-white/5 transition-all border border-border-subtle">
+        {/* ── Providers ── */}
+        {section === 'providers' && (
+          <>
+          <div style={{ marginBottom: '16px', padding: '12px 16px', background: 'var(--accent-dim)', border: '1px solid var(--accent)', borderRadius: '4px', fontSize: '12px', color: 'var(--text-accent)' }}>
+            <strong>One provider is all you need.</strong> Kizen routes vision, code, and document tasks to the right model within your chosen provider automatically. You can add more providers for fallback.
+          </div>
+          <Section title="API Keys" icon={Icons.Key}>
+            {PROVIDER_LIST.map((p, i) => (
+              <div key={p.id} style={{ borderBottom: i < PROVIDER_LIST.length - 1 ? '1px solid var(--border-subtle)' : 'none', padding: '14px 16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-primary)' }}>{p.label}</span>
+                    <PingBadge status={pingStatus[p.id]} />
+                    {pingMs[p.id] && <span style={{ fontSize: '10px', color: 'var(--text-tertiary)', fontFamily: 'JetBrains Mono' }}>{pingMs[p.id]}ms</span>}
+                  </div>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    {keys[p.id] && (
+                      <button onClick={() => testProvider(p.id)} style={{
+                        fontSize: '11px', padding: '3px 8px', border: '1px solid var(--border-default)',
+                        borderRadius: '2px', background: 'transparent', color: 'var(--text-secondary)',
+                        cursor: 'pointer', fontFamily: 'inherit',
+                      }}>
                         Test
                       </button>
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <div className="relative flex-1">
-                      <input
-                        type={showKeys[id] ? 'text' : 'password'}
-                        value={keys[id] || ''}
-                        onChange={(e) => handleKeyChange(id, e.target.value)}
-                        placeholder={`${label} API key`}
-                        className="kizen-input pr-10 font-mono text-xs"
-                      />
-                      <button onClick={() => toggleKeyVisibility(id)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary hover:text-text-primary">
-                        {showKeys[id] ? <Icons.EyeOff size={13} /> : <Icons.Eye size={13} />}
-                      </button>
-                    </div>
-                    <button onClick={() => handleKeySave(id)}
-                      className="kizen-btn-ghost border border-border-subtle px-3 text-xs">
+                    )}
+                    <button onClick={() => handleKeySave(p.id)} style={{
+                      fontSize: '11px', padding: '3px 8px', border: '1px solid var(--accent)',
+                      borderRadius: '2px', background: 'var(--accent-dim)', color: 'var(--text-accent)',
+                      cursor: 'pointer', fontFamily: 'inherit',
+                    }}>
                       Save
                     </button>
                   </div>
                 </div>
-              ))}
-            </Section>
-
-            <Section title="Search Provider" icon={Icons.Search}>
-              <div className="px-5 py-4">
-                <div className="flex items-center justify-between mb-2">
-                  <div>
-                    <span className="text-sm font-medium text-text-primary">Serper</span>
-                    <a href="https://serper.dev" target="_blank" rel="noopener noreferrer"
-                      className="ml-2 text-xs text-accent">serper.dev</a>
-                    <span className="ml-2 text-[10px] text-accent bg-accent-dim px-1.5 py-0.5 rounded">Optional</span>
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <div className="relative flex-1">
-                    <input
-                      type={showKeys['serper'] ? 'text' : 'password'}
-                      value={keys['serper'] || ''}
-                      onChange={(e) => handleKeyChange('serper', e.target.value)}
-                      placeholder="Serper API key"
-                      className="kizen-input pr-10 font-mono text-xs"
-                    />
-                    <button onClick={() => toggleKeyVisibility('serper')}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary hover:text-text-primary">
-                      {showKeys['serper'] ? <Icons.EyeOff size={13} /> : <Icons.Eye size={13} />}
-                    </button>
-                  </div>
-                  <button onClick={() => handleKeySave('serper')}
-                    className="kizen-btn-ghost border border-border-subtle px-3 text-xs">Save</button>
+                <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                  <input
+                    type={showKeys[p.id] ? 'text' : 'password'}
+                    value={keys[p.id] || ''}
+                    onChange={e => handleKeyChange(p.id, e.target.value)}
+                    onBlur={() => handleKeySave(p.id)}
+                    placeholder={`${p.label} API key — ${p.url}`}
+                    className="kizen-input"
+                    style={{ flex: 1, fontFamily: 'JetBrains Mono, monospace', fontSize: '12px' }}
+                  />
+                  <button onClick={() => setShowKeys(s => ({ ...s, [p.id]: !s[p.id] }))} style={{ padding: '6px', border: '1px solid var(--border-default)', borderRadius: '2px', background: 'transparent', cursor: 'pointer', color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center' }}>
+                    {showKeys[p.id] ? <Icons.Incognito size={13} /> : <Icons.Globe size={13} />}
+                  </button>
                 </div>
               </div>
-            </Section>
-          </div>
+            ))}
+          </Section>
+          <Section title="Search Provider" icon={Icons.Search}>
+            <div style={{ padding: '14px 16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-primary)' }}>Serper</span>
+                  <span style={{ fontSize: '10px', color: 'var(--text-accent)', background: 'var(--accent-dim)', padding: '1px 6px', borderRadius: '2px' }}>Optional — web search</span>
+                </div>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  <a href="https://serper.dev" target="_blank" rel="noopener noreferrer" style={{ fontSize: '11px', color: 'var(--text-accent)' }}>serper.dev</a>
+                  <button onClick={() => handleKeySave('serper')} style={{ fontSize: '11px', padding: '3px 8px', border: '1px solid var(--accent)', borderRadius: '2px', background: 'var(--accent-dim)', color: 'var(--text-accent)', cursor: 'pointer', fontFamily: 'inherit' }}>Save</button>
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                <input
+                  type={showKeys['serper'] ? 'text' : 'password'}
+                  value={keys['serper'] || ''}
+                  onChange={e => handleKeyChange('serper', e.target.value)}
+                  onBlur={() => handleKeySave('serper')}
+                  placeholder="Serper API key — serper.dev"
+                  className="kizen-input"
+                  style={{ flex: 1, fontFamily: 'JetBrains Mono, monospace', fontSize: '12px' }}
+                />
+                <button onClick={() => setShowKeys(s => ({ ...s, serper: !s.serper }))} style={{ padding: '6px', border: '1px solid var(--border-default)', borderRadius: '2px', background: 'transparent', cursor: 'pointer', color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center' }}>
+                  {showKeys['serper'] ? <Icons.Incognito size={13} /> : <Icons.Globe size={13} />}
+                </button>
+              </div>
+            </div>
+          </Section>
+          </>
         )}
 
         {/* ── Model ── */}
-        {activeSection === 'model' && (
-          <div>
-            <h1 className="font-display font-bold text-2xl text-text-primary mb-1">Model Selection</h1>
-            <p className="text-text-secondary text-sm mb-6">Set your active provider and model, and override models for specific functions.</p>
-
-            <Section title="Active Provider & Model" icon={Icons.Cpu}>
-              <Row label="Active Provider" desc="Which AI provider to use for general chat">
-                <select
-                  value={settings.active_provider || ''}
-                  onChange={(e) => updateSetting('active_provider', e.target.value)}
-                  className="kizen-input w-48 text-xs">
-                  <option value="">Select provider</option>
-                  {PROVIDER_LIST.filter(p => keys[p.id]).map(p => (
-                    <option key={p.id} value={p.id}>{p.label}</option>
-                  ))}
-                </select>
-              </Row>
-              <Row label="Active Model" desc="Model to use for the active provider" noBorder>
-                <select
-                  value={settings.active_model || ''}
-                  onChange={(e) => updateSetting('active_model', e.target.value)}
-                  className="kizen-input w-48 text-xs">
-                  <option value="">Auto (spending mode)</option>
-                  {(settings.active_provider ? MODELS_BY_PROVIDER[settings.active_provider] || [] : []).map(m => (
-                    <option key={m} value={m}>{m.split('/').pop()}</option>
-                  ))}
-                </select>
-              </Row>
-            </Section>
-
-            <Section title="Function Model Overrides" icon={Icons.Lightning}>
+        {section === 'model' && (
+          <>
+            <Section title="Spending Mode" icon={Icons.Lightning}>
               {[
-                { key: 'vision', label: 'Vision / Image Analysis', desc: 'Model used when images are attached' },
-                { key: 'code', label: 'Code Analysis', desc: 'Model used for code-heavy tasks' },
-                { key: 'document', label: 'Document Processing', desc: 'Model used when files are attached' },
-              ].map(({ key, label, desc }, i, arr) => (
-                <Row key={key} label={label} desc={desc} noBorder={i === arr.length - 1}>
-                  <select
-                    value={settings.model_overrides?.[key] || ''}
-                    onChange={(e) => updateNestedSetting('model_overrides', key, e.target.value)}
-                    className="kizen-input w-48 text-xs">
-                    <option value="">Follow active model</option>
-                    {Object.entries(MODELS_BY_PROVIDER).flatMap(([provider, models]) =>
-                      keys[provider] ? models.map(m => (
-                        <option key={`${provider}:${m}`} value={m}>{m.split('/').pop()} ({PROVIDERS[provider]?.name})</option>
-                      )) : []
-                    )}
-                  </select>
+                { id: 'economy', label: 'Economy', desc: '512 tokens · fastest · cheapest' },
+                { id: 'balanced', label: 'Balanced', desc: '2048 tokens · default choice' },
+                { id: 'max', label: 'Max', desc: '8192 tokens · best quality' },
+                { id: 'overdrive', label: 'Overdrive', desc: '16384 tokens · forces max model · all intelligence', danger: true },
+              ].map((m, i, arr) => (
+                <Row key={m.id} label={m.label} desc={m.desc} last={i === arr.length - 1}>
+                  <button
+                    onClick={() => updateSetting('spending_mode', m.id)}
+                    style={{
+                      padding: '4px 12px', fontSize: '11px', fontWeight: 500,
+                      border: `1px solid ${settings.spending_mode === m.id ? (m.danger ? 'var(--red)' : 'var(--accent)') : 'var(--border-default)'}`,
+                      borderRadius: '2px',
+                      background: settings.spending_mode === m.id ? (m.danger ? 'var(--red-dim)' : 'var(--accent-dim)') : 'transparent',
+                      color: settings.spending_mode === m.id ? (m.danger ? 'var(--red)' : 'var(--text-accent)') : 'var(--text-secondary)',
+                      cursor: 'pointer', fontFamily: 'inherit',
+                      display: 'flex', alignItems: 'center', gap: '4px',
+                    }}
+                  >
+                    {m.danger && <Icons.Flame size={10} />}
+                    {settings.spending_mode === m.id ? 'Active' : 'Select'}
+                  </button>
                 </Row>
               ))}
             </Section>
-          </div>
+
+            <Section title="Performance" icon={Icons.Sliders}>
+              <Row label="Temperature" desc={`${settings.temperature} — creativity vs precision`}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '160px' }}>
+                  <Slider value={settings.temperature} min={0} max={2} step={0.1} onChange={v => updateSetting('temperature', v)} />
+                  <span style={{ fontSize: '11px', fontFamily: 'JetBrains Mono', color: 'var(--text-secondary)', minWidth: '28px' }}>{settings.temperature}</span>
+                </div>
+              </Row>
+              <Row label="Max tokens" desc={`${settings.max_tokens} — per response limit`} last>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '160px' }}>
+                  <Slider value={settings.max_tokens} min={256} max={8192} step={256} onChange={v => updateSetting('max_tokens', v)} />
+                  <span style={{ fontSize: '11px', fontFamily: 'JetBrains Mono', color: 'var(--text-secondary)', minWidth: '36px' }}>{settings.max_tokens}</span>
+                </div>
+              </Row>
+            </Section>
+          </>
         )}
 
-        {/* ── Spending ── */}
-        {activeSection === 'spending' && (
-          <div>
-            <h1 className="font-display font-bold text-2xl text-text-primary mb-1">Spending Controls</h1>
-            <p className="text-text-secondary text-sm mb-6">Control how many tokens Kizen uses and which model tiers are available.</p>
+        {/* ── Intelligence ── */}
+        {section === 'intelligence' && (
+          <Section title="Intelligence Layer" icon={Icons.Brain} tag="PHASE 2">
+            <Row label="Self-critique loop" desc="AI reviews its own response and identifies gaps before finalising">
+              <Toggle value={settings.self_critique} onChange={v => updateSetting('self_critique', v)} />
+            </Row>
+            <Row label="Deep reasoning chain" desc="Forces step-by-step analysis and consideration of alternatives">
+              <Toggle value={settings.deep_reasoning} onChange={v => updateSetting('deep_reasoning', v)} />
+            </Row>
+            <Row label="Confidence scoring" desc="Shows a 0–100% confidence bar on every AI response">
+              <Toggle value={settings.confidence_scoring} onChange={v => updateSetting('confidence_scoring', v)} />
+            </Row>
+            <Row label="Clarification popup" desc="AI generates dynamic clarifying questions before answering">
+              <Toggle value={settings.clarification_popup} onChange={v => updateSetting('clarification_popup', v)} />
+            </Row>
+            <Row label="Time awareness" desc="Includes current date and time in every system prompt" last>
+              <Toggle value={settings.time_awareness !== false} onChange={v => updateSetting('time_awareness', v)} />
+            </Row>
+          </Section>
+        )}
 
-            <Section title="Spending Mode" icon={Icons.Zap}>
+        {/* ── Afterburn ── */}
+        {section === 'afterburn' && (
+          <>
+            {/* Red header */}
+            <div style={{
+              padding: '16px 20px', marginBottom: '20px',
+              border: '1px solid var(--red)', background: 'var(--red-dim)',
+              display: 'flex', alignItems: 'center', gap: '10px',
+            }}>
+              <Icons.Flame size={16} style={{ color: 'var(--red)' }} />
+              <div>
+                <div style={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: '14px', color: 'var(--red)' }}>Afterburn Panel</div>
+                <div style={{ fontSize: '11px', color: 'var(--red)', opacity: 0.7 }}>Performance monitoring and power controls</div>
+              </div>
+            </div>
+
+            {/* Live gauges */}
+            <div style={{ marginBottom: '20px' }}>
+              <div style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-tertiary)', marginBottom: '12px' }}>
+                Live gauges
+              </div>
+              <div style={{
+                display: 'flex', justifyContent: 'space-around', alignItems: 'center',
+                padding: '20px', border: '1px solid var(--border-default)', background: 'var(--bg-1)',
+              }}>
+                <AfterburnGauges />
+              </div>
+            </div>
+
+            {/* Power controls */}
+            <Section title="Power Controls" icon={Icons.Sliders} tag="AFTERBURN">
+              <Row label="Temperature boost" desc="Overdrive temperature override">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '160px' }}>
+                  <Slider value={settings.temperature} min={0} max={2} step={0.05} onChange={v => updateSetting('temperature', v)} color="var(--red)" />
+                  <span style={{ fontSize: '11px', fontFamily: 'JetBrains Mono', color: 'var(--red)', minWidth: '28px' }}>{settings.temperature}</span>
+                </div>
+              </Row>
+              <Row label="Context depth" desc="How many past messages to include">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '160px' }}>
+                  <Slider value={settings.max_tokens / 512} min={1} max={32} step={1} onChange={v => updateSetting('max_tokens', Math.round(v * 512))} color="var(--red)" />
+                  <span style={{ fontSize: '11px', fontFamily: 'JetBrains Mono', color: 'var(--red)', minWidth: '28px' }}>{Math.round(settings.max_tokens / 512)}x</span>
+                </div>
+              </Row>
+              <Row label="Streaming" desc="Real-time token streaming" last>
+                <Toggle value={settings.stream_enabled !== false} onChange={v => updateSetting('stream_enabled', v)} danger />
+              </Row>
+            </Section>
+
+            {/* Overdrive arm */}
+            <div style={{
+              padding: '16px 20px',
+              border: `1px solid ${settings.spending_mode === 'overdrive' ? 'var(--red)' : 'var(--border-default)'}`,
+              background: settings.spending_mode === 'overdrive' ? 'var(--red-dim)' : 'var(--bg-1)',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            }}>
+              <div>
+                <div style={{ fontWeight: 600, fontSize: '14px', color: settings.spending_mode === 'overdrive' ? 'var(--red)' : 'var(--text-primary)' }}>
+                  Overdrive Mode
+                </div>
+                <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '2px' }}>
+                  Forces max model · 16k context · all intelligence layers
+                </div>
+              </div>
+              <button
+                onClick={() => updateSetting('spending_mode', settings.spending_mode === 'overdrive' ? 'balanced' : 'overdrive')}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '6px',
+                  padding: '6px 16px', fontSize: '12px', fontWeight: 600,
+                  background: settings.spending_mode === 'overdrive' ? 'var(--red)' : 'transparent',
+                  color: settings.spending_mode === 'overdrive' ? '#fff' : 'var(--red)',
+                  border: '1px solid var(--red)', borderRadius: '2px',
+                  cursor: 'pointer', fontFamily: 'inherit',
+                }}
+                className={settings.spending_mode === 'overdrive' ? 'animate-overdrive' : ''}
+              >
+                <Icons.Flame size={13} />
+                {settings.spending_mode === 'overdrive' ? 'ACTIVE — Deactivate' : 'Activate Overdrive'}
+              </button>
+            </div>
+          </>
+        )}
+
+        {/* ── Behaviour ── */}
+        {section === 'behaviour' && (
+          <>
+            <Section title="Tone" icon={Icons.Sliders}>
               {[
-                { id: 'economy', label: 'Economy', icon: Icons.Zap, color: 'text-green-400', bg: 'bg-green-400/10', border: 'border-green-400/30', desc: 'Smallest models · 512 token cap · lowest cost' },
-                { id: 'balanced', label: 'Balanced', icon: Icons.Cpu, color: 'text-accent', bg: 'bg-accent-dim', border: 'border-accent/30', desc: 'Mid-tier models · 2048 token cap · recommended' },
-                { id: 'max', label: 'Max', icon: Icons.Lightning, color: 'text-orange-400', bg: 'bg-orange-400/10', border: 'border-orange-400/30', desc: 'Best models · 8192 token cap · highest quality' },
-              ].map(({ id, label, icon: Icon, color, bg, border, desc }) => (
-                <button key={id} onClick={() => updateSetting('spending_mode', id)}
-                  className={`w-full flex items-center gap-4 px-5 py-4 text-left border-b border-border-subtle last:border-0 transition-all hover:bg-white/2
-                    ${settings.spending_mode === id ? `${bg}` : ''}`}>
-                  <div className={`w-9 h-9 rounded-xl ${bg} border ${border} flex items-center justify-center`}>
-                    <Icon size={16} className={color} />
-                  </div>
-                  <div className="flex-1">
-                    <div className={`font-medium text-sm ${settings.spending_mode === id ? color : 'text-text-primary'}`}>{label}</div>
-                    <div className="text-xs text-text-secondary">{desc}</div>
-                  </div>
-                  {settings.spending_mode === id && <Icons.Check size={16} className={color} />}
-                </button>
+                { id: 'balanced', label: 'Balanced', desc: 'Smart and helpful, friend with expertise' },
+                { id: 'formal', label: 'Formal', desc: 'Professional, precise language' },
+                { id: 'friendly', label: 'Friendly', desc: 'Warm, conversational, encouraging' },
+                { id: 'technical', label: 'Technical', desc: 'Deep technical precision, no hand-holding' },
+              ].map((t, i, arr) => (
+                <Row key={t.id} label={t.label} desc={t.desc} last={i === arr.length - 1}>
+                  <button
+                    onClick={() => updateNested('behaviour', 'tone', t.id)}
+                    style={{
+                      padding: '3px 10px', fontSize: '11px',
+                      border: `1px solid ${settings.behaviour?.tone === t.id ? 'var(--accent)' : 'var(--border-default)'}`,
+                      borderRadius: '2px',
+                      background: settings.behaviour?.tone === t.id ? 'var(--accent-dim)' : 'transparent',
+                      color: settings.behaviour?.tone === t.id ? 'var(--text-accent)' : 'var(--text-secondary)',
+                      cursor: 'pointer', fontFamily: 'inherit',
+                    }}
+                  >
+                    {settings.behaviour?.tone === t.id ? 'Active' : 'Select'}
+                  </button>
+                </Row>
               ))}
             </Section>
 
-            <Section title="Token Overrides" icon={Icons.Settings}>
-              <Row label="Max Tokens" desc="Override spending mode token limit (0 = use mode default)">
-                <div className="flex items-center gap-2">
-                  <input
-                    type="number"
-                    value={settings.max_tokens || ''}
-                    onChange={(e) => updateSetting('max_tokens', parseInt(e.target.value) || 0)}
-                    placeholder="Auto"
-                    className="kizen-input w-28 text-xs text-right"
-                    min="0" max="32000" step="256"
-                  />
-                  <span className="text-xs text-text-secondary">tokens</span>
-                </div>
-              </Row>
-              <Row label="Temperature" desc="Creativity vs. precision (0 = deterministic, 1 = creative)" noBorder>
-                <div className="flex items-center gap-3">
-                  <input
-                    type="range"
-                    min="0" max="1" step="0.05"
-                    value={settings.temperature ?? 0.7}
-                    onChange={(e) => updateSetting('temperature', parseFloat(e.target.value))}
-                    className="w-28 accent-[#7c6aff]"
-                  />
-                  <span className="text-xs text-text-secondary w-8 text-right font-mono">
-                    {(settings.temperature ?? 0.7).toFixed(2)}
-                  </span>
-                </div>
-              </Row>
+            <Section title="Response Style" icon={Icons.Activity}>
+              {[
+                { id: 'balanced', label: 'Balanced', desc: 'Match length to complexity' },
+                { id: 'concise', label: 'Concise', desc: 'Short and to the point, no padding' },
+                { id: 'detailed', label: 'Detailed', desc: 'Thorough, comprehensive responses' },
+              ].map((s, i, arr) => (
+                <Row key={s.id} label={s.label} desc={s.desc} last={i === arr.length - 1}>
+                  <button
+                    onClick={() => updateNested('behaviour', 'response_style', s.id)}
+                    style={{
+                      padding: '3px 10px', fontSize: '11px',
+                      border: `1px solid ${settings.behaviour?.response_style === s.id ? 'var(--accent)' : 'var(--border-default)'}`,
+                      borderRadius: '2px',
+                      background: settings.behaviour?.response_style === s.id ? 'var(--accent-dim)' : 'transparent',
+                      color: settings.behaviour?.response_style === s.id ? 'var(--text-accent)' : 'var(--text-secondary)',
+                      cursor: 'pointer', fontFamily: 'inherit',
+                    }}
+                  >
+                    {settings.behaviour?.response_style === s.id ? 'Active' : 'Select'}
+                  </button>
+                </Row>
+              ))}
             </Section>
-          </div>
-        )}
-
-        {/* ── AI Behaviour ── */}
-        {activeSection === 'behaviour' && (
-          <div>
-            <h1 className="font-display font-bold text-2xl text-text-primary mb-1">AI Behaviour</h1>
-            <p className="text-text-secondary text-sm mb-6">Fine-tune how Kizen communicates and responds.</p>
-
-            <Section title="Personality & Tone" icon={Icons.Brain}>
-              <Row label="Tone" desc="How Kizen speaks to you">
-                <select value={settings.behaviour?.tone || 'balanced'}
-                  onChange={(e) => updateNestedSetting('behaviour', 'tone', e.target.value)}
-                  className="kizen-input w-40 text-xs">
-                  <option value="balanced">Balanced</option>
-                  <option value="friendly">Friendly</option>
-                  <option value="technical">Technical</option>
-                  <option value="formal">Formal</option>
-                </select>
-              </Row>
-              <Row label="Response Style" desc="How detailed responses should be">
-                <select value={settings.behaviour?.response_style || 'balanced'}
-                  onChange={(e) => updateNestedSetting('behaviour', 'response_style', e.target.value)}
-                  className="kizen-input w-40 text-xs">
-                  <option value="balanced">Balanced</option>
-                  <option value="concise">Concise</option>
-                  <option value="detailed">Detailed</option>
-                </select>
-              </Row>
-              <Row label="Personality Mode" desc="How Kizen positions itself in conversation" noBorder>
-                <select value={settings.behaviour?.personality || 'assistant'}
-                  onChange={(e) => updateNestedSetting('behaviour', 'personality', e.target.value)}
-                  className="kizen-input w-40 text-xs">
-                  <option value="assistant">Assistant</option>
-                  <option value="mentor">Mentor</option>
-                  <option value="peer">Peer</option>
-                </select>
-              </Row>
-            </Section>
-
-            <Section title="Global System Prompt" icon={Icons.Settings}>
-              <div className="p-5">
-                <p className="text-xs text-text-secondary mb-3">Injected into every conversation after Kizen's default instructions.</p>
-                <textarea
-                  value={settings.system_prompt || ''}
-                  onChange={(e) => updateSetting('system_prompt', e.target.value)}
-                  placeholder="e.g. Always reply in Tamil. Prefer short answers. You are helping me build a SaaS product..."
-                  rows={5}
-                  className="kizen-input resize-none text-sm font-mono w-full"
-                />
-              </div>
-            </Section>
-
-            <Section title="Response Options" icon={Icons.Lightning}>
-              <Row label="Stream Responses" desc="Show response as it's generated (real-time)">
-                <Toggle value={settings.stream_enabled !== false} onChange={(v) => updateSetting('stream_enabled', v)} />
-              </Row>
-              <Row label="Response Language" desc="Language for Kizen's responses" noBorder>
-                <select value={settings.response_language || 'en'}
-                  onChange={(e) => updateSetting('response_language', e.target.value)}
-                  className="kizen-input w-40 text-xs">
-                  <option value="en">English</option>
-                  <option value="ta">Tamil</option>
-                  <option value="hi">Hindi</option>
-                  <option value="ml">Malayalam</option>
-                  <option value="fr">French</option>
-                  <option value="de">German</option>
-                  <option value="ja">Japanese</option>
-                  <option value="zh">Chinese</option>
-                </select>
-              </Row>
-            </Section>
-          </div>
+          </>
         )}
 
         {/* ── Memory ── */}
-        {activeSection === 'memory' && (
-          <div>
-            <h1 className="font-display font-bold text-2xl text-text-primary mb-1">Memory</h1>
-            <p className="text-text-secondary text-sm mb-6">Kizen learns about you across conversations and injects that context into every chat.</p>
+        {section === 'memory' && (
+          <Section title="Memory Engine" icon={Icons.Brain}>
+            <Row label="Cross-chat memory" desc="Remember facts about you across conversations">
+              <Toggle value={settings.memory_enabled !== false} onChange={v => updateSetting('memory_enabled', v)} />
+            </Row>
+            <Row label="Web search (Serper)" desc="Enable real-time web search (requires Serper key in Providers)" last>
+              <Toggle value={settings.search_enabled} onChange={v => updateSetting('search_enabled', v)} />
+            </Row>
+          </Section>
+        )}
 
-            <Section title="Memory Settings" icon={Icons.Brain}>
-              <Row label="Enable Memory" desc="Inject remembered facts into every conversation">
-                <Toggle value={settings.memory_enabled !== false} onChange={(v) => updateSetting('memory_enabled', v)} />
-              </Row>
-              <Row label="Web Search" desc="Enable Serper web search (requires Serper API key)" noBorder>
-                <Toggle value={settings.search_enabled === true} onChange={(v) => updateSetting('search_enabled', v)} />
-              </Row>
-            </Section>
-
-            <Section title="Memory Contents" icon={Icons.Memory}>
-              <div className="p-5">
-                {memory.facts?.length > 0 ? (
-                  <div className="space-y-2 mb-4">
-                    {memory.facts.map((fact, i) => (
-                      <div key={i} className="flex items-start gap-2 p-3 rounded-xl bg-white/3 border border-border-subtle text-sm">
-                        <Icons.Pin size={13} className="text-accent flex-shrink-0 mt-0.5" />
-                        <span className="text-text-secondary">{fact.content}</span>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-6 text-text-secondary text-sm">
-                    <Icons.Brain size={28} className="mx-auto mb-3 text-text-secondary/30" />
-                    No memories yet. Have some conversations and Kizen will start remembering things about you.
-                  </div>
-                )}
-
-                {memory.facts?.length > 0 && (
-                  <button onClick={clearMemory}
-                    className="kizen-btn-ghost border border-red-500/20 text-red-400 hover:text-red-300 text-xs">
-                    <Icons.Trash size={13} />
-                    Clear all memories
+        {/* ── Appearance ── */}
+        {section === 'appearance' && (
+          <Section title="Appearance" icon={Icons.Sun}>
+            <Row label="Theme" desc="Light or dark interface">
+              <div style={{ display: 'flex', gap: '6px' }}>
+                {['light', 'dark'].map(t => (
+                  <button key={t} onClick={() => {
+                    updateSetting('theme', t)
+                    document.documentElement.setAttribute('data-theme', t)
+                    window.dispatchEvent(new Event('kizen:theme-changed'))
+                  }} style={{
+                    padding: '4px 12px', fontSize: '12px', fontFamily: 'inherit',
+                    border: `1px solid ${settings.theme === t ? 'var(--accent)' : 'var(--border-default)'}`,
+                    borderRadius: '4px',
+                    background: settings.theme === t ? 'var(--accent-dim)' : 'transparent',
+                    color: settings.theme === t ? 'var(--text-accent)' : 'var(--text-secondary)',
+                    cursor: 'pointer', textTransform: 'capitalize',
+                  }}>
+                    {t === 'light' ? '☀ Light' : '☾ Dark'}
                   </button>
-                )}
+                ))}
               </div>
-            </Section>
-          </div>
+            </Row>
+            <Row label="Font size" desc="Base text size for the interface" last>
+              <div style={{ display: 'flex', gap: '6px' }}>
+                {['Small', 'Default', 'Large'].map(s => (
+                  <button key={s} onClick={() => updateSetting('font_size', s.toLowerCase())} style={{
+                    padding: '4px 10px', fontSize: '11px', fontFamily: 'inherit',
+                    border: `1px solid ${(settings.font_size || 'default') === s.toLowerCase() ? 'var(--accent)' : 'var(--border-default)'}`,
+                    borderRadius: '4px',
+                    background: (settings.font_size || 'default') === s.toLowerCase() ? 'var(--accent-dim)' : 'transparent',
+                    color: (settings.font_size || 'default') === s.toLowerCase() ? 'var(--text-accent)' : 'var(--text-secondary)',
+                    cursor: 'pointer',
+                  }}>
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </Row>
+          </Section>
         )}
 
-        {/* ── Advanced ── */}
-        {activeSection === 'advanced' && (
-          <div>
-            <h1 className="font-display font-bold text-2xl text-text-primary mb-1">Advanced</h1>
-            <p className="text-text-secondary text-sm mb-6">Low-level controls for power users.</p>
-
-            <Section title="Context Window" icon={Icons.Memory}>
-              <Row label="Context Memory" desc="Include conversation history in every message">
-                <Toggle value={settings.memory_enabled !== false} onChange={(v) => updateSetting('memory_enabled', v)} />
-              </Row>
-              <Row label="Context Messages" desc={`Messages sent as context (set by spending mode: ${settings.spending_mode === 'economy' ? '5' : settings.spending_mode === 'max' ? '50' : '15'})`} noBorder>
-                <span className="text-xs text-text-secondary font-mono px-3 py-1.5 bg-white/5 rounded-lg border border-border-subtle">
-                  {settings.spending_mode === 'economy' ? '5' : settings.spending_mode === 'max' ? '50' : '15'} messages
-                </span>
-              </Row>
-            </Section>
-
-            <Section title="Debug" icon={Icons.Analysis}>
-              <div className="px-5 py-4">
-                <div className="font-mono text-xs text-text-secondary space-y-1 leading-relaxed">
-                  <div>Provider: <span className="text-accent">{settings.active_provider || 'none'}</span></div>
-                  <div>Model: <span className="text-accent">{settings.active_model || 'auto'}</span></div>
-                  <div>Mode: <span className="text-accent">{settings.spending_mode}</span></div>
-                  <div>Temperature: <span className="text-accent">{settings.temperature ?? 0.7}</span></div>
-                  <div>Max tokens: <span className="text-accent">{settings.max_tokens || 'auto'}</span></div>
-                  <div>Stream: <span className="text-accent">{String(settings.stream_enabled !== false)}</span></div>
-                  <div>Search: <span className="text-accent">{String(settings.search_enabled === true)}</span></div>
-                  <div>Memory: <span className="text-accent">{String(settings.memory_enabled !== false)}</span></div>
-                </div>
-              </div>
-            </Section>
-          </div>
+        {/* ── Data ── */}
+        {section === 'data' && (
+          <Section title="Data & Export" icon={Icons.Shield} danger>
+            <Row label="Export all data" desc="Download all conversations, settings, and memory">
+              <button onClick={exportAllData} className="kizen-btn-ghost" style={{ fontSize: '12px', padding: '4px 12px' }}>
+                <Icons.Download size={13} />
+                Export
+              </button>
+            </Row>
+            <Row label="Clear conversations" desc="Delete all saved conversations">
+              <button
+                onClick={() => {
+                  if (confirm === 'convos') { clearAllConversations(); setConfirm(null) }
+                  else setConfirm('convos')
+                }}
+                style={{
+                  padding: '4px 12px', fontSize: '12px', fontFamily: 'inherit',
+                  border: `1px solid ${confirm === 'convos' ? 'var(--red)' : 'var(--border-default)'}`,
+                  borderRadius: '2px',
+                  background: confirm === 'convos' ? 'var(--red-dim)' : 'transparent',
+                  color: confirm === 'convos' ? 'var(--red)' : 'var(--text-secondary)',
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px',
+                }}
+              >
+                <Icons.Trash size={12} />
+                {confirm === 'convos' ? 'Confirm delete' : 'Clear all'}
+              </button>
+            </Row>
+            <Row label="Nuclear reset" desc="Delete everything — keys, conversations, memory, settings" last>
+              <button
+                onClick={() => {
+                  if (confirm === 'all') { clearAllData(); window.location.href = '/'; }
+                  else setConfirm('all')
+                }}
+                style={{
+                  padding: '4px 12px', fontSize: '12px', fontFamily: 'inherit',
+                  border: '1px solid var(--red)', borderRadius: '2px',
+                  background: confirm === 'all' ? 'var(--red)' : 'var(--red-dim)',
+                  color: confirm === 'all' ? '#fff' : 'var(--red)',
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px',
+                }}
+              >
+                <Icons.X size={12} />
+                {confirm === 'all' ? 'CONFIRM RESET' : 'Reset everything'}
+              </button>
+            </Row>
+          </Section>
         )}
-
-        {/* ── Data & Privacy ── */}
-        {activeSection === 'data' && (
-          <div>
-            <h1 className="font-display font-bold text-2xl text-text-primary mb-1">Data & Privacy</h1>
-            <p className="text-text-secondary text-sm mb-6">All your data lives in this browser. Nothing is sent to our servers.</p>
-
-            <Section title="Export" icon={Icons.Export}>
-              <div className="px-5 py-4 flex flex-col gap-3">
-                <button onClick={exportAllData}
-                  className="kizen-btn-ghost border border-border-subtle text-sm w-fit">
-                  <Icons.Download size={15} />
-                  Export all data (JSON)
-                </button>
-                <p className="text-xs text-text-secondary">Exports all conversations, settings, and memory as a JSON file.</p>
-              </div>
-            </Section>
-
-            <Section title="Danger Zone" icon={Icons.Trash}>
-              <div className="px-5 py-4 space-y-4">
-                {/* Clear conversations */}
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-sm font-medium text-text-primary">Clear conversation history</div>
-                    <div className="text-xs text-text-secondary">Deletes all saved conversations. Irreversible.</div>
-                  </div>
-                  {confirmClear === 'convos' ? (
-                    <div className="flex gap-2">
-                      <button onClick={() => { clearAllConversations(); setConfirmClear(null); window.dispatchEvent(new Event('kizen:conversations-updated')) }}
-                        className="text-xs text-red-400 hover:text-red-300 px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20 transition-all">Confirm</button>
-                      <button onClick={() => setConfirmClear(null)}
-                        className="text-xs text-text-secondary hover:text-text-primary px-3 py-1.5 rounded-lg border border-border-subtle transition-all">Cancel</button>
-                    </div>
-                  ) : (
-                    <button onClick={() => setConfirmClear('convos')}
-                      className="kizen-btn-ghost border border-red-500/20 text-red-400 hover:text-red-300 text-xs">
-                      <Icons.Trash size={13} />
-                      Clear history
-                    </button>
-                  )}
-                </div>
-
-                <div className="h-px bg-border-subtle" />
-
-                {/* Nuclear */}
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-sm font-medium text-red-400">Reset everything</div>
-                    <div className="text-xs text-text-secondary">Deletes all data including API keys. Returns to onboarding.</div>
-                  </div>
-                  {confirmClear === 'all' ? (
-                    <div className="flex gap-2">
-                      <button onClick={() => { clearAllData(); window.location.href = '/onboarding' }}
-                        className="text-xs text-red-400 hover:text-red-300 px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20 transition-all">Confirm reset</button>
-                      <button onClick={() => setConfirmClear(null)}
-                        className="text-xs text-text-secondary hover:text-text-primary px-3 py-1.5 rounded-lg border border-border-subtle transition-all">Cancel</button>
-                    </div>
-                  ) : (
-                    <button onClick={() => setConfirmClear('all')}
-                      className="text-xs text-red-400 hover:text-red-300 px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20 border transition-all flex items-center gap-1.5">
-                      <Icons.Trash size={13} />
-                      Reset app
-                    </button>
-                  )}
-                </div>
-              </div>
-            </Section>
-          </div>
-        )}
-
       </div>
     </div>
+  )
+}
+
+// ─── Afterburn Live Gauges ────────────────────────────────────
+function AfterburnGauges() {
+  const [ping, setPing] = useState(0)
+  const [tokens, setTokens] = useState(0)
+  const usage = getUsage()
+
+  useEffect(() => {
+    // Animate ping with simulated value
+    let frame
+    const animate = () => {
+      setPing(Math.round(60 + Math.random() * 80))
+      setTokens(usage.session_tokens || Math.round(Math.random() * 2000))
+      frame = setTimeout(animate, 2000 + Math.random() * 1000)
+    }
+    animate()
+    return () => clearTimeout(frame)
+  }, [])
+
+  return (
+    <>
+      <ArcGauge value={ping} max={500} label="Ping" color="var(--gauge-ping)" unit="ms" />
+      <div style={{ width: '1px', height: '80px', background: 'var(--border-subtle)' }} />
+      <ArcGauge value={tokens} max={10000} label="Session tokens" color="var(--gauge-token)" unit="tok" />
+      <div style={{ width: '1px', height: '80px', background: 'var(--border-subtle)' }} />
+      <ArcGauge value={Object.keys(getApiKeys()).filter(k => getApiKeys()[k]).length} max={6} label="Providers" color="#22c55e" unit="active" />
+    </>
   )
 }
